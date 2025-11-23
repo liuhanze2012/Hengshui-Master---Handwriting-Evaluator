@@ -1,0 +1,7 @@
+{
+  "name": "Hengshui Master - Handwriting Evaluator",
+  "description": "A web application that analyzes English handwriting to determine if it meets the 'Hengshui Style' (Exam Standard) criteria using AI vision.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
