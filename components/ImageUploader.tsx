@@ -1,6 +1,5 @@
-
 import React, { useRef } from 'react';
-import { Camera, Upload, Image as ImageIcon } from 'lucide-react';
+import { Camera, Image as ImageIcon } from 'lucide-react';
 
 interface ImageUploaderProps {
   onImageSelected: (file: File) => void;
@@ -13,6 +12,15 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelected }) => {
     if (e.target.files && e.target.files[0]) {
       onImageSelected(e.target.files[0]);
     }
+  };
+
+  // Type-safe props for the file input to handle 'capture' attribute issues
+  const inputProps = {
+    type: "file",
+    accept: "image/*",
+    className: "hidden",
+    onChange: handleFileChange,
+    capture: "environment" as any // Type assertion to bypass strict TS check if needed
   };
 
   return (
@@ -28,14 +36,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelected }) => {
         </p>
 
         <div className="space-y-4">
-          {/* Hidden Input */}
+          {/* Hidden Input with spread props */}
           <input
-            type="file"
             ref={fileInputRef}
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFileChange}
+            {...inputProps}
           />
 
           {/* Camera Button (Mobile Optimized) */}
@@ -54,7 +58,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelected }) => {
       </div>
       
       <div className="mt-8 text-center">
-        <p className="text-sm text-slate-500 font-medium">目标：>80 分 (达标)</p>
+        <p className="text-sm text-slate-500 font-medium">目标：&gt;80 分 (达标)</p>
         <div className="w-full bg-slate-200 rounded-full h-2 mt-2 overflow-hidden">
            <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-2 w-4/5 rounded-full opacity-50"></div>
         </div>

@@ -6,8 +6,22 @@ export const config = {
 };
 
 export default async function handler(req: Request) {
+  // 1. Method Check
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+  }
+
+  // 2. Security: Basic Origin/Referer Check
+  // Prevent direct tool access (like Postman/Curl) without proper headers
+  // In strict production, you would check if origin.endsWith('.vercel.app')
+  const origin = req.headers.get('origin');
+  const referer = req.headers.get('referer');
+  
+  // Allow localhost for dev, but require origin/referer presence for prod
+  const isLocal = origin?.includes('localhost') || origin?.includes('127.0.0.1');
+  
+  if (!isLocal && !origin && !referer) {
+     return new Response(JSON.stringify({ error: 'Forbidden: Missing origin' }), { status: 403 });
   }
 
   try {
@@ -19,7 +33,8 @@ export default async function handler(req: Request) {
 
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'Server configuration error: API Key missing' }), { status: 500 });
+      console.error("API_KEY is missing in environment variables");
+      return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500 });
     }
 
     const ai = new GoogleGenAI({ apiKey });
