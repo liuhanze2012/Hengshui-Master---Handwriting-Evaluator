@@ -12,12 +12,8 @@ export default async function handler(req: Request) {
   }
 
   // 2. Security: Basic Origin/Referer Check
-  // Prevent direct tool access (like Postman/Curl) without proper headers
-  // In strict production, you would check if origin.endsWith('.vercel.app')
   const origin = req.headers.get('origin');
   const referer = req.headers.get('referer');
-  
-  // Allow localhost for dev, but require origin/referer presence for prod
   const isLocal = origin?.includes('localhost') || origin?.includes('127.0.0.1');
   
   if (!isLocal && !origin && !referer) {
@@ -39,28 +35,37 @@ export default async function handler(req: Request) {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    // Prompt specifically tuned for Hengshui style with Chinese output
+    // Updated Prompt: Focus purely on visual similarity to "Shuyao Hengshui", ignore semantics.
     const prompt = `
-      你是一位精通"衡水体"（Hengshui Style）的英语书法阅卷专家。
+      角色设定：你现在不是语言老师，而是一个高精度的OCR字体识别与比对引擎。
       
-      用户提供的图片已经过预处理（二值化），请分析图片中的手写英文。
+      核心任务：计算用户上传的手写图片与标准“舒窈英文衡水体 (Shuyao Hengshui Style)”的【视觉相似度】。
       
-      **衡水体评分标准：**
-      1. **结构 (Structure)**: 字母应饱满圆润，严格占据四线三格的中间区域。
-      2. **对齐 (Alignment)**: 书写必须严格紧贴基准线，不得漂浮或下沉。
-      3. **倾斜度 (Slant)**: 整体垂直或通过统一的右倾角度（通常为5-15度），保持高度一致性。
-      4. **间距 (Spacing)**: 单词内部字母紧凑（几无缝隙），单词之间留有明显空格（约一个字母a的宽度）。
-      5. **连笔 (Ligatures)**: 杜绝随意连笔，模仿印刷体（如Arial/Times New Roman）的手写版。
-      6. **清晰度 (Clarity)**: 极高的可读性，卷面整洁无涂改。
+      重要指令：
+      1. 绝对【不要】检查拼写错误、语法错误或内容意义。哪怕用户写的是乱码，只要字形符合标准，就是满分。
+      2. 评分仅基于像素级的字形、结构、排版特征。
 
-      **任务：**
-      分析提供的书写样本。
-      评分范围 0 到 100 分。
-      - >= 80分：达标（Standard）。
-      - < 80分：需改进（Needs Improvement）。
+      参考标准（舒窈英文衡水体特征）：
+      1. **笔触 (Stroke)**：
+         - 模仿印刷体（Sans-serif/Arial风格），圆润饱满。
+         - **严禁连笔**：字母之间完全断开。
+         - **无圈环**：上伸字母（b, d, h, k, l）和下伸字母（g, p, q, y）的杆必须是直的，不能写成花体圆圈。
+         - 特例：'t' 的底部通常不弯曲或仅微弯，'f' 为直线。
+      2. **结构 (Structure)**：
+         - 字母 'a', 'o', 'e', 'c' 等圆形结构必须极度饱满，接近正圆。
+         - 单词内部字母间距极其紧凑（几乎相触），但单词之间留有标准空格。
+      3. **排版 (Layout)**：
+         - 严格的“齐头齐尾”，仿佛尺子量过。
+         - 字母底部必须紧贴基准线，不能上下跳动。
+         - 整体倾斜度统一（0度垂直 或 统一右倾5度）。
 
-      **输出要求：**
-      请以 **JSON** 格式返回结果，**所有文本反馈必须使用简体中文**。
+      评分标准 (0-100)：
+      - 100分：看起来完全像是电脑打印的“舒窈衡水体”。
+      - 80-99分：极度接近，仅有个别笔画有手写痕迹。
+      - 60-79分：形似，但存在字距不匀、个别字母连笔或出格。
+      - <60分：普通手写体，随意连笔，甚至花体。
+
+      请输出 JSON 格式，所有反馈用简体中文：
     `;
 
     const response = await ai.models.generateContent({
@@ -83,22 +88,22 @@ export default async function handler(req: Request) {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            score: { type: Type.NUMBER, description: "0-100的评分" },
-            isPassing: { type: Type.BOOLEAN, description: "分数是否大于等于80" },
+            score: { type: Type.NUMBER, description: "视觉相似度评分 (0-100)" },
+            isPassing: { type: Type.BOOLEAN, description: "是否 >= 80" },
             feedback: {
               type: Type.ARRAY,
               items: { type: Type.STRING },
-              description: "整体评价（简体中文）"
+              description: "针对字形、笔触、排版的整体评价（不评判内容）"
             },
             strengths: {
               type: Type.ARRAY,
               items: { type: Type.STRING },
-              description: "符合衡水体标准的优点（简体中文）"
+              description: "符合舒窈体特征的细节（如：圆润度极佳、无连笔）"
             },
             improvements: {
               type: Type.ARRAY,
               items: { type: Type.STRING },
-              description: "具体的改进建议（简体中文）"
+              description: "偏离舒窈体特征的细节（如：y的尾巴打圈了、单词间距过大）"
             }
           },
           required: ["score", "isPassing", "feedback", "strengths", "improvements"]
